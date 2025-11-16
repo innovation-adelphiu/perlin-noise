@@ -7,18 +7,19 @@
 //   intensity – warp strength (default 0.04)
 //   scale     – noise feature size (default 4.0)
 //   speed     – animation speed (default 0.4)
+//   tint      – vec3 RGB tint multiplier (default white)
+//   opacity   – alpha multiplier (default 1.0)
 
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.181.1/build/three.module.js';
 
 export function createNoiseMaterial(options) {
 
-  // Provide safe defaults
-  options = options || {};
-
   const map       = options.map       !== undefined ? options.map       : null;
   const intensity = options.intensity !== undefined ? options.intensity : 0.04;
   const scale     = options.scale     !== undefined ? options.scale     : 4.0;
   const speed     = options.speed     !== undefined ? options.speed     : 0.4;
+  const tint      = options.tint      !== undefined ? options.tint      : new THREE.Color(1,1,1);
+  const opacity   = options.opacity   !== undefined ? options.opacity   : 1.0;
 
   const vertexShader = `
     varying vec2 vUv;
@@ -36,6 +37,8 @@ export function createNoiseMaterial(options) {
     uniform float uIntensity;
     uniform float uScale;
     uniform float uSpeed;
+    uniform vec3 uTint;
+    uniform float uOpacity;
 
     varying vec2 vUv;
 
@@ -44,11 +47,10 @@ export function createNoiseMaterial(options) {
     }
 
     vec2 randomGradient(vec2 p) {
-      float r = rand(p) * 6.28318530718;  // 2π
+      float r = rand(p) * 6.28318530718;
       return vec2(cos(r), sin(r));
     }
 
-    // periodic Perlin noise (tileable)
     float perlinPeriodic(vec2 p, vec2 period) {
       vec2 pi0 = mod(floor(p), period);
       vec2 pi1 = mod(pi0 + 1.0, period);
@@ -76,7 +78,6 @@ export function createNoiseMaterial(options) {
       return mix(x0, x1, w.y);
     }
 
-    // fractal periodic Perlin noise (fractal brownian motion)
     float fbmPeriodic(vec2 p, vec2 period) {
       float value = 0.0;
       float amplitude = 0.5;
@@ -96,20 +97,22 @@ export function createNoiseMaterial(options) {
     void main() {
       vec2 uv = vUv;
 
-      // Animate inside the seamless domain
       vec2 animated = uv * uScale + vec2(uTime * uSpeed, 0.0);
-
-      // Controls tiling; larger = more tiles across UV 0..1
       vec2 basePeriod = vec2(4.0, 4.0);
 
-      // Two independent fbm fields for 2D warp
       float n1 = fbmPeriodic(animated, basePeriod);
       float n2 = fbmPeriodic(animated + vec2(10.73, 4.89), basePeriod);
 
       vec2 offset = uIntensity * vec2(n1, n2);
       vec2 warpedUv = clamp(uv + offset, 0.0, 1.0);
 
-      gl_FragColor = texture2D(uTexture, warpedUv);
+      vec4 color = texture2D(uTexture, warpedUv);
+
+      // Apply tint + opacity
+      color.rgb *= uTint;
+      color.a   *= uOpacity;
+
+      gl_FragColor = color;
     }
   `;
 
@@ -118,7 +121,9 @@ export function createNoiseMaterial(options) {
     uTime:      { value: 0 },
     uIntensity: { value: intensity },
     uScale:     { value: scale },
-    uSpeed:     { value: speed }
+    uSpeed:     { value: speed },
+    uTint:      { value: tint },
+    uOpacity:   { value: opacity }
   };
 
   const material = new THREE.ShaderMaterial({
@@ -130,11 +135,13 @@ export function createNoiseMaterial(options) {
     blending: THREE.NormalBlending
   });
 
-  // convenience functions
+  // convenience
   material.setTexture   = v => material.uniforms.uTexture.value = v;
   material.setIntensity = v => material.uniforms.uIntensity.value = v;
   material.setScale     = v => material.uniforms.uScale.value = v;
   material.setSpeed     = v => material.uniforms.uSpeed.value = v;
+  material.setTint      = v => material.uniforms.uTint.value = v;
+  material.setOpacity   = v => material.uniforms.uOpacity.value = v;
 
   return material;
 }

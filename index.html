@@ -36,14 +36,17 @@
   loader.load('cloud1.png', texture => {
     texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
 
+    const gray = THREE.MathUtils.randFloat(0.50, 1.0);
+    const tintColor = new THREE.Color(gray, gray, gray);
+
     const material = createNoiseMaterial({
       map: texture,
       transparent: true,
-      opacity: 0.0,
+      opacity: 0.8,
+      tint: tintColor,
       intensity: 0.04,  // warp strength
       scale: 8,         // noise feature size
       speed: 0.4        // animation speed
-
     });
 
     const mesh = new THREE.Mesh(geometry, material);
