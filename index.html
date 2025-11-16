@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Perlin Noise Demo</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+      height: 100%;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+<script type="module">
+  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.181.1/build/three.module.js';
+  import { createNoiseMaterial } from './noiseMaterial.js';
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+  camera.position.z = 1;
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  const geometry = new THREE.PlaneGeometry(2, 2); 
+
+  const loader = new THREE.TextureLoader();
+  loader.load('cloud1.png', texture => {
+    texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+
+    const material = createNoiseMaterial({
+      map: texture,
+      transparent: true,
+      opacity: 0.0,
+      intensity: 0.04,  // warp strength
+      scale: 8,         // noise feature size
+      speed: 0.4        // animation speed
+
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      material.uniforms.uTime.value = clock.getElapsedTime();
+      renderer.render(scene, camera);
+    }
+    animate();
+  });
+
+  window.addEventListener('resize', () => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+</script>
+
+</body>
+</html>
